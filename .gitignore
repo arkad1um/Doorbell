@@ -60,3 +60,13 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# IDE
+.idea
+
+# macOS cruft
+.DS_Store
+
+# Build artifacts
+dist/
+*.dmg

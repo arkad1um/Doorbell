@@ -1,0 +1,36 @@
+name: Release DMG
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: macOS-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build DMG
+        env:
+          SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/spm-module-cache
+          SWIFT_MODULE_CACHE_PATH: ${{ runner.temp }}/spm-module-cache
+        run: |
+          ./scripts/build_dmg.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Doorbell-dmg
+          path: dist/Doorbell.dmg
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/Doorbell.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
