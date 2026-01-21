@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1 - 2026-01-21
+
+$NOTES
+
+
 ## main - 2026-01-21
 
 $NOTES
