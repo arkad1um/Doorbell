@@ -56,6 +56,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
+
           cat <<'EOF' > /tmp/notes.txt
           $NOTES
           EOF
@@ -76,7 +79,8 @@ jobs:
           mv "$TMP" CHANGELOG.md
           git add CHANGELOG.md
           git commit -m "docs: update changelog for $TAG" || true
-          git push origin HEAD:"$DEFAULT_BRANCH"
+          git pull --rebase origin "$DEFAULT_BRANCH" || true
+          git push origin "$DEFAULT_BRANCH" || echo "Warning: could not push changelog (non-fast-forward?)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
