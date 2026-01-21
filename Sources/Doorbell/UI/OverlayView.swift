@@ -23,28 +23,28 @@ struct OverlayView: View {
                     .padding(.horizontal, 24)
 
                 Text("Starts \(meeting.timeToStartDescription) at \(formatted(date: meeting.startDate))")
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.white.opacity(0.85))
                     .font(.headline)
 
                 HStack(spacing: 12) {
-                    Button(action: onJoin) {
-                        Text("Join now")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    Button("Join now", action: onJoin)
+                        .buttonStyle(.bordered)
+                        .tint(.white.opacity(0.9))
+                        .foregroundStyle(.white)
+                        .controlSize(.large)
 
-                    Button(action: onSnooze) {
-                        Text("Snooze 5m")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    Button("Snooze 5m", action: onSnooze)
+                        .buttonStyle(.bordered)
+                        .tint(.white.opacity(0.9))
+                        .foregroundStyle(.white)
+                        .controlSize(.large)
                 }
-                .frame(maxWidth: 500)
+                .frame(maxWidth: 520)
 
                 Button("Dismiss overlay", action: onDismiss)
-                    .foregroundStyle(.white.opacity(0.9))
+                    .buttonStyle(.bordered)
+                    .tint(.white.opacity(0.9))
+                    .foregroundStyle(.white)
             }
             .padding(40)
         }

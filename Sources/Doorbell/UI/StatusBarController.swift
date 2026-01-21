@@ -5,6 +5,8 @@ import SwiftUI
 final class StatusBarController {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
+    private var localEventMonitor: Any?
+    private var globalEventMonitor: Any?
 
     init(appModel: AppModel) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -20,6 +22,12 @@ final class StatusBarController {
             button.target = self
             button.action = #selector(togglePopover)
         }
+
+        startMonitoringClicks()
+    }
+
+    deinit {
+        scheduleStopMonitoring()
     }
 
     @objc private func togglePopover() {
@@ -38,6 +46,41 @@ final class StatusBarController {
 
     private func closePopover() {
         popover.performClose(nil)
+    }
+
+    private func startMonitoringClicks() {
+        // Close popover when clicking anywhere outside it (menu-bar style).
+        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
+            self?.handleClick(event)
+        }
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            self?.handleClick(event)
+            return event
+        }
+    }
+
+    private func stopMonitoringClicks() {
+        if let globalEventMonitor {
+            NSEvent.removeMonitor(globalEventMonitor)
+        }
+        if let localEventMonitor {
+            NSEvent.removeMonitor(localEventMonitor)
+        }
+    }
+
+    nonisolated private func scheduleStopMonitoring() {
+        Task { @MainActor [weak self] in
+            self?.stopMonitoringClicks()
+        }
+    }
+
+    private func handleClick(_ event: NSEvent) {
+        guard popover.isShown else { return }
+        if let window = popover.contentViewController?.view.window, event.window == window {
+            return
+        }
+        closePopover()
     }
 
     private func makeStatusImage() -> NSImage? {
