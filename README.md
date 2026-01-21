@@ -21,6 +21,7 @@ The script builds the release binary, assembles `dist/Doorbell.app`, and package
 - Set `CODESIGN_IDENTITY` to a Developer ID Application identity before running `./scripts/build_dmg.sh` to sign the app bundle and DMG.
 - Notarize and staple the DMG with `NOTARY_KEY_ID=... NOTARY_ISSUER_ID=... NOTARY_KEY_CONTENTS=... ./scripts/notarize_dmg.sh` (NOTARY_KEY_CONTENTS is the base64-encoded App Store Connect API key `.p8`).
 - GitHub Actions `release.yml` expects secrets for releases: `MACOS_CODESIGN_IDENTITY`, `MACOS_CERTIFICATE_P12` (base64 `.p12`), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_NOTARY_KEY_ID`, `MACOS_NOTARY_ISSUER_ID`, `MACOS_NOTARY_KEY` (base64 `.p8`).
+- Если секретов нет, workflow соберёт неподписанный DMG (Gatekeeper покажет предупреждение “неизвестный разработчик” / потребует “Open anyway” после копирования приложения в `/Applications`).
 
 ## Release new version
 

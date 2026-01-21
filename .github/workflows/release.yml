@@ -30,21 +30,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate signing and notarization secrets
+      - name: Detect signing/notarization secrets
+        id: signing
         run: |
           set -euo pipefail
-          if [ -z "${CODESIGN_IDENTITY}" ] || [ -z "${MACOS_CERTIFICATE}" ] || [ -z "${MACOS_CERTIFICATE_PASSWORD}" ]; then
-            echo "Developer ID signing secrets are missing (CODESIGN_IDENTITY / MACOS_CERTIFICATE / MACOS_CERTIFICATE_PASSWORD)."
-            exit 1
+          SIGNING="false"
+          NOTARY="false"
+          if [ -n "${CODESIGN_IDENTITY:-}" ] && [ -n "${MACOS_CERTIFICATE:-}" ] && [ -n "${MACOS_CERTIFICATE_PASSWORD:-}" ]; then
+            SIGNING="true"
           fi
-          if [ -z "${NOTARY_KEY_ID}" ] || [ -z "${NOTARY_ISSUER_ID}" ] || [ -z "${NOTARY_KEY_CONTENTS}" ]; then
-            echo "Notarization secrets are missing (NOTARY_KEY_ID / NOTARY_ISSUER_ID / NOTARY_KEY_CONTENTS)."
-            exit 1
+          if [ -n "${NOTARY_KEY_ID:-}" ] && [ -n "${NOTARY_ISSUER_ID:-}" ] && [ -n "${NOTARY_KEY_CONTENTS:-}" ]; then
+            NOTARY="true"
+          fi
+          echo "signing=${SIGNING}" >> "$GITHUB_OUTPUT"
+          echo "notary=${NOTARY}" >> "$GITHUB_OUTPUT"
+
+      - name: Build mode
+        run: |
+          if [ "${{ steps.signing.outputs.signing }}" = "true" ]; then
+            echo "Building signed DMG (Developer ID) with notarization=${{ steps.signing.outputs.notary }}"
+          else
+            echo "Building UNSIGNED DMG (Gatekeeper will warn about unidentified developer)."
           fi
 
       - name: Import signing certificate
         env:
           KEYCHAIN_PASSWORD: ""
+        if: steps.signing.outputs.signing == 'true'
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
@@ -68,6 +80,7 @@ jobs:
           ./scripts/build_dmg.sh
 
       - name: Notarize DMG
+        if: steps.signing.outputs.signing == 'true' && steps.signing.outputs.notary == 'true'
         run: ./scripts/notarize_dmg.sh
 
       - name: Generate release notes
