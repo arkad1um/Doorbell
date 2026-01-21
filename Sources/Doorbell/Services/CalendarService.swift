@@ -20,7 +20,16 @@ final class CalendarService {
         case .authorized, .writeOnly, .fullAccess:
             return
         case .notDetermined:
-            let granted = try await eventStore.requestFullAccessToEvents()
+            let granted = try await withCheckedThrowingContinuation { continuation in
+                Task { @MainActor in
+                    do {
+                        let granted = try await eventStore.requestFullAccessToEvents()
+                        continuation.resume(returning: granted)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
             guard granted else { throw CalendarServiceError.accessDenied }
         case .denied:
             throw CalendarServiceError.accessDenied

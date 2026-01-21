@@ -11,9 +11,16 @@ Doorbell — macOS-приложение с менюбаром и полноэк�
 - DMG background template: `Packaging/dmg-background.png` (optional for styling the installer DMG layout).
 
 ## Build DMG
-
 ```bash
 ./scripts/build_dmg.sh
 ```
 
 The script builds the release binary, assembles `dist/Doorbell.app`, and packages `dist/Doorbell.dmg`. Adjust `Packaging/Info.plist` if you need different bundle metadata.
+
+## Release new version
+
+1) Убедись, что тесты зелёные: `swift test` (или дождись прохода CI).  
+2) Обнови версию в `Packaging/Info.plist` (`CFBundleShortVersionString` / `CFBundleVersion`), если нужно.  
+3) Собери локально DMG при желании: `./scripts/build_dmg.sh` (файлы будут в `dist/`).  
+4) Запушь изменения и создай тег вида `vX.Y.Z` (например, `git tag v0.1.1 && git push origin v0.1.1`).  
+5) GitHub Actions `Release DMG` соберёт DMG на macOS и выложит релиз с артефактом `dist/Doorbell.dmg`.
