@@ -11,6 +11,14 @@ jobs:
     runs-on: macOS-latest
     permissions:
       contents: write
+    env:
+      CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+      NOTARY_KEY_CONTENTS: ${{ secrets.MACOS_NOTARY_KEY }}
+      PRIMARY_BUNDLE_ID: com.doorbell.app
     steps:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -22,12 +30,45 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate signing and notarization secrets
+        run: |
+          set -euo pipefail
+          if [ -z "${CODESIGN_IDENTITY}" ] || [ -z "${MACOS_CERTIFICATE}" ] || [ -z "${MACOS_CERTIFICATE_PASSWORD}" ]; then
+            echo "Developer ID signing secrets are missing (CODESIGN_IDENTITY / MACOS_CERTIFICATE / MACOS_CERTIFICATE_PASSWORD)."
+            exit 1
+          fi
+          if [ -z "${NOTARY_KEY_ID}" ] || [ -z "${NOTARY_ISSUER_ID}" ] || [ -z "${NOTARY_KEY_CONTENTS}" ]; then
+            echo "Notarization secrets are missing (NOTARY_KEY_ID / NOTARY_ISSUER_ID / NOTARY_KEY_CONTENTS)."
+            exit 1
+          fi
+
+      - name: Import signing certificate
+        env:
+          KEYCHAIN_PASSWORD: ""
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          rm -f "$CERT_PATH"
+
       - name: Build DMG
         env:
           SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/spm-module-cache
           SWIFT_MODULE_CACHE_PATH: ${{ runner.temp }}/spm-module-cache
         run: |
           ./scripts/build_dmg.sh
+
+      - name: Notarize DMG
+        run: ./scripts/notarize_dmg.sh
 
       - name: Generate release notes
         id: notes

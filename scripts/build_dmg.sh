@@ -86,6 +86,14 @@ if [ -f "$APP_ICON_ICNS" ]; then
   cp "$APP_ICON_ICNS" "$APP_BUNDLE/Contents/Resources/Doorbell.icns"
 fi
 
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+  echo "Codesigning app bundle with identity '${CODESIGN_IDENTITY}'…"
+  codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$APP_BUNDLE"
+  codesign --verify --deep --strict "$APP_BUNDLE"
+else
+  echo "Skipping app codesign (CODESIGN_IDENTITY not set)."
+fi
+
 echo "Preparing DMG staging…"
 cp -R "$APP_BUNDLE" "$DMG_STAGING/"
 ln -s /Applications "$DMG_STAGING/Applications"
@@ -152,6 +160,14 @@ else
 fi
 
 hdiutil convert "$DMG_RW" -format UDZO -ov -o "$DMG_PATH"
+
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+  echo "Codesigning DMG with identity '${CODESIGN_IDENTITY}'…"
+  codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
+else
+  echo "Skipping DMG codesign (CODESIGN_IDENTITY not set)."
+fi
+
 rm -f "$DMG_RW"
 rm -rf "$DMG_STAGING" "$ICONSET_DIR" "$APP_ICON_ICNS" "$DMG_ICON_ICNS"
 
