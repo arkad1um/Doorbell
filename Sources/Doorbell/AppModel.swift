@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import AppKit
+import SwiftUI
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -9,9 +10,12 @@ final class AppModel: ObservableObject {
     @Published var leadTime: TimeInterval = 180
     @Published var statusMessage: String = "Waiting for calendar access"
     @Published var mutedUntil: Date?
+    @Published var launchAtLogin: Bool = false
+    @Published private(set) var isMuted: Bool = false
 
     var presentOverlay: ((Meeting) -> Void)?
     var dismissOverlay: (() -> Void)?
+    private var settingsWindow: NSWindow?
 
     private let calendarService: CalendarService
     private let scheduler: Scheduler
@@ -57,22 +61,67 @@ final class AppModel: ObservableObject {
         NSWorkspace.shared.openApplication(at: calendarURL, configuration: configuration, completionHandler: nil)
     }
 
+    func toggleLaunchAtLogin(_ enabled: Bool) {
+        launchAtLogin = enabled
+        // TODO: hook into SMAppService or LaunchAgent here when packaging as bundle.
+    }
+
+    func openSettings() {
+        if let window = settingsWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let controller = NSHostingController(rootView: SettingsView().environmentObject(self))
+        let window = NSWindow(contentViewController: controller)
+        window.title = "Settings"
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.setFrameAutosaveName("DoorbellSettings")
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow = window
+    }
+
     func quitApp() {
         NSApp.terminate(nil)
     }
 
     func snooze(minutes: Int = 5) {
         scheduler.snooze(minutes: minutes)
+        statusMessage = "Snoozed for \(minutes) min"
+        dismissOverlay?()
     }
 
     func muteForRestOfDay() {
-        mutedUntil = Calendar.current.startOfDay(for: Date()).addingTimeInterval(24 * 60 * 60)
-        dismissOverlay?()
+        let now = Date()
+        if isMuted {
+            unmute()
+        } else {
+            mutedUntil = Calendar.current.startOfDay(for: now).addingTimeInterval(24 * 60 * 60)
+            dismissOverlay?()
+            isMuted = true
+        }
+    }
+
+    func unmute() {
+        mutedUntil = nil
+        isMuted = false
     }
 
     func updateLeadTime(minutes: Double) {
         leadTime = max(60, minutes * 60)
         scheduler.schedule(meeting: nextMeeting, leadTime: leadTime)
+    }
+
+    func refreshMuteState() {
+        if let mutedUntil {
+            isMuted = Date() < mutedUntil
+        } else {
+            isMuted = false
+        }
     }
 
     private func apply(meetings: [Meeting]) {
@@ -84,12 +133,8 @@ final class AppModel: ObservableObject {
 
 extension AppModel: SchedulerDelegate {
     func scheduler(_ scheduler: Scheduler, didTrigger meeting: Meeting) {
+        refreshMuteState()
         guard !isMuted else { return }
         presentOverlay?(meeting)
-    }
-
-    private var isMuted: Bool {
-        guard let mutedUntil else { return false }
-        return Date() < mutedUntil
     }
 }

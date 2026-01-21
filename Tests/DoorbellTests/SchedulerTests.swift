@@ -42,6 +42,28 @@ final class SchedulerTests: XCTestCase, SchedulerDelegate {
         XCTAssertEqual(triggeredMeeting?.id, meeting.id)
     }
 
+    func testSnoozeReschedulesAndTriggers() async {
+        let expectation = expectation(description: "Scheduler triggers meeting after snooze")
+        triggerExpectation = expectation
+        let meeting = Meeting(
+            id: "2",
+            title: "Call",
+            startDate: Date().addingTimeInterval(5),
+            endDate: Date().addingTimeInterval(600),
+            location: nil,
+            joinURL: nil,
+            calendarName: nil,
+            notesSnippet: nil
+        )
+
+        scheduler.schedule(meeting: meeting, leadTime: 0)
+        // Snooze to fire sooner than original start time.
+        scheduler.snooze(minutes: 0)
+
+        await fulfillment(of: [expectation], timeout: 2.0)
+        XCTAssertEqual(triggeredMeeting?.id, meeting.id)
+    }
+
     // MARK: - SchedulerDelegate
 
     func scheduler(_ scheduler: Scheduler, didTrigger meeting: Meeting) {

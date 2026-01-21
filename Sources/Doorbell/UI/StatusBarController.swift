@@ -1,29 +1,31 @@
 import AppKit
 import SwiftUI
+import Combine
 
 @MainActor
 final class StatusBarController {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
+    private let appModel: AppModel
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
+    private var cancellables: Set<AnyCancellable> = []
 
     init(appModel: AppModel) {
+        self.appModel = appModel
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         popover = NSPopover()
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: StatusBarView(appModel: appModel))
 
         if let button = statusItem.button {
-            let image = makeStatusImage()
-            button.image = image
-            button.imagePosition = .imageOnly
-            button.title = image == nil ? "Doorbell" : ""
+            updateStatusIcon(isMuted: appModel.isMuted)
             button.target = self
             button.action = #selector(togglePopover)
         }
 
         startMonitoringClicks()
+        bindAppModel()
     }
 
     deinit {
@@ -98,5 +100,23 @@ final class StatusBarController {
 
         image?.isTemplate = true
         return image
+    }
+
+    private func updateStatusIcon(isMuted: Bool) {
+        guard let button = statusItem.button else { return }
+        let image = makeStatusImage()
+        button.image = image
+        button.imagePosition = .imageOnly
+        button.title = image == nil ? "Doorbell" : ""
+        button.contentTintColor = isMuted ? NSColor.systemGray : nil
+    }
+
+    private func bindAppModel() {
+        appModel.$isMuted
+            .receive(on: RunLoop.main)
+            .sink { [weak self] muted in
+                self?.updateStatusIcon(isMuted: muted)
+            }
+            .store(in: &cancellables)
     }
 }

@@ -54,6 +54,10 @@ struct StatusBarView: View {
                 }
                 Spacer()
                 Menu {
+                    Button("Settings…") {
+                        appModel.openSettings()
+                    }
+                    Divider()
                     Button("Open calendar") {
                         appModel.openCalendar()
                     }

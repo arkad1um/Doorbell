@@ -48,6 +48,25 @@ final class MeetingLinkExtractorTests: XCTestCase {
         XCTAssertEqual(result?.absoluteString, "https://example.internal/room")
     }
 
+    func testPrefersMeetingLinkInNotesOverUnknownEventURL() {
+        let event = makeEvent()
+        event.url = URL(string: "https://example.internal/room")
+        event.notes = "Join https://zoom.us/j/987654321"
+
+        let result = extractor.extract(from: event)
+
+        XCTAssertEqual(result?.host, "zoom.us")
+    }
+
+    func testFallsBackToAnyLinkInNotesWhenUnknownHost() {
+        let event = makeEvent()
+        event.notes = "Custom link https://intra.company/call"
+
+        let result = extractor.extract(from: event)
+
+        XCTAssertEqual(result?.absoluteString, "https://intra.company/call")
+    }
+
     // MARK: - Helpers
 
     private func makeEvent() -> EKEvent {
