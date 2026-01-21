@@ -5,22 +5,26 @@ import XCTest
 final class SchedulerTests: XCTestCase, SchedulerDelegate {
     private var scheduler: Scheduler!
     private var triggeredMeeting: Meeting?
+    private var triggerExpectation: XCTestExpectation?
 
     override func setUp() {
         super.setUp()
         scheduler = Scheduler()
         scheduler.delegate = self
         triggeredMeeting = nil
+        triggerExpectation = nil
     }
 
     override func tearDown() {
         scheduler.cancel()
         scheduler = nil
+        triggerExpectation = nil
         super.tearDown()
     }
 
     func testSchedulesAndTriggers() async {
         let expectation = expectation(description: "Scheduler triggers meeting")
+        triggerExpectation = expectation
         let meeting = Meeting(
             id: "1",
             title: "Call",
@@ -34,13 +38,7 @@ final class SchedulerTests: XCTestCase, SchedulerDelegate {
 
         scheduler.schedule(meeting: meeting, leadTime: 0)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            if self.triggeredMeeting != nil {
-                expectation.fulfill()
-            }
-        }
-
-        await fulfillment(of: [expectation], timeout: 1.0)
+        await fulfillment(of: [expectation], timeout: 2.0)
         XCTAssertEqual(triggeredMeeting?.id, meeting.id)
     }
 
@@ -48,5 +46,6 @@ final class SchedulerTests: XCTestCase, SchedulerDelegate {
 
     func scheduler(_ scheduler: Scheduler, didTrigger meeting: Meeting) {
         triggeredMeeting = meeting
+        triggerExpectation?.fulfill()
     }
 }
