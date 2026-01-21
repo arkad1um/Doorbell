@@ -23,6 +23,12 @@ The script builds the release binary, assembles `dist/Doorbell.app`, and package
 - GitHub Actions `release.yml` expects secrets for releases: `MACOS_CODESIGN_IDENTITY`, `MACOS_CERTIFICATE_P12` (base64 `.p12`), `MACOS_CERTIFICATE_PASSWORD`, `MACOS_NOTARY_KEY_ID`, `MACOS_NOTARY_ISSUER_ID`, `MACOS_NOTARY_KEY` (base64 `.p8`).
 - Если секретов нет, workflow соберёт неподписанный DMG (Gatekeeper покажет предупреждение “неизвестный разработчик” / потребует “Open anyway” после копирования приложения в `/Applications`).
 
+## Без Developer ID: как запустить локально
+1. Смонтируй DMG и перетащи `Doorbell.app` в `/Applications`.
+2. Выполни (может запросить sudo): `./scripts/prepare_unsigned_app.sh` — он сделает ad-hoc подпись и заново повесит quarantine, чтобы macOS показала стандартный диалог “Open anyway” вместо “повреждено”.
+3. Открой через ПКМ/Ctrl+Click → Open или через System Settings → Privacy & Security → Open Anyway.
+4. Если всё равно пишет “повреждено”, сними quarantine и повтори: `sudo xattr -rd com.apple.quarantine /Applications/Doorbell.app`.
+
 ## Release new version
 
 1) Убедись, что тесты зелёные: `swift test` (или дождись прохода CI).  

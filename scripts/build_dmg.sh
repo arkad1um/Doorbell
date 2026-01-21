@@ -91,7 +91,9 @@ if [ -n "${CODESIGN_IDENTITY:-}" ]; then
   codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$APP_BUNDLE"
   codesign --verify --deep --strict "$APP_BUNDLE"
 else
-  echo "Skipping app codesign (CODESIGN_IDENTITY not set)."
+  echo "Ad-hoc signing app bundle (no CODESIGN_IDENTITY provided)…"
+  codesign --force --deep --sign - "$APP_BUNDLE"
+  codesign --verify --deep --strict "$APP_BUNDLE"
 fi
 
 echo "Preparing DMG staging…"
@@ -165,7 +167,8 @@ if [ -n "${CODESIGN_IDENTITY:-}" ]; then
   echo "Codesigning DMG with identity '${CODESIGN_IDENTITY}'…"
   codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
 else
-  echo "Skipping DMG codesign (CODESIGN_IDENTITY not set)."
+  echo "Ad-hoc signing DMG (no CODESIGN_IDENTITY provided)…"
+  codesign --force --sign - "$DMG_PATH"
 fi
 
 rm -f "$DMG_RW"
